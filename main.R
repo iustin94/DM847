@@ -1,8 +1,12 @@
 # Exam
 
-# set working directory
-# save.image("workspace.R")
+#########################################################################################
+# READ FIRST
+# 1) set working directory
+# 2) load the data 
 # load.image("workspace.R")
+# continue from line 95
+#########################################################################################
 
 #########################################################################################
 # 1.1 - load in data files each into their own data frame
