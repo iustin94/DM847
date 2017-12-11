@@ -4,7 +4,7 @@
 # READ FIRST
 # 1) set working directory
 # 2) load the data 
-# load.image("workspace.R")
+# load("workspace.R")
 # continue from line 95
 #########################################################################################
 
@@ -70,8 +70,10 @@ plot(x=citrus$t, y=citrus$r)
 plot(x=original$t, y=original$r)
 
 # DATA STRUCTURE FOR K-MEANS
-citrus.data <- cbind(citrus$t, citrus$r)
-original.data <- cbind(original$t, original$r)
+citrus.data <- cbind(citrus$peak_name, citrus$t, citrus$r)
+original.data <- cbind(original$peak_name, original$t, original$r)
+colnames(citrus.data) <- c("peak_name", "t", "r")
+colnames(original.data) <- c("peak_name", "t", "r")
 
 citrus.num_cluster <- (nrow(citrus.data))*sum(apply(citrus.data,2,var))
 for (i in 75:85) citrus.num_cluster[i - 74] <- sum(kmeans(citrus.data, centers=i)$withinss)
@@ -80,29 +82,27 @@ original.num_cluster <- (nrow(original.data))*sum(apply(original.data,2,var))
 for (i in 75:85) original.num_cluster[i - 74] <- sum(kmeans(original.data, centers=i)$withinss)
 
 # BEST FIT IS 81 and 84 CLUSTERS
-plot_kmeans_analysis(75, 85, citrus.kmeans)
-plot_kmeans_analysis(75, 85, original.kmeans)
+plot_kmeans_analysis(75, 85, citrus.num_cluster)
+plot_kmeans_analysis(75, 85, original.num_cluster)
 
 nclust <- 81
 citrus.kmeans <- kmeans(citrus.data, nclust)
 original.kmeans <- kmeans(original.data, nclust)
 
-plot(citrus.data,col=original.kmeans$cluster, pch=20)
-plot(original.data,col=original.kmeans$cluster, pch=20)
-
-hist(citrus.data, xlim = c(1,133))
-
-# BUILD MATRIX
-dd1 <- NULL
-dd1 <- cbind(dd1, d)
-dd1 <- cbind(dd1, km.out.d$cluster)
-colnames(dd1) <- c("r", "t", "cluster_num")
-heatmap(dd1)
+plot(x=citrus.data[,2], y=citrus.data[,3], col=original.kmeans$cluster, pch=20)
+plot(x=original.data[,2], y=original.data[,3], col=original.kmeans$cluster, pch=20)
 
 # TO DO: JUSTIN DO IT!
 # CANBERA DISTANCE
 # canbera <- dist(d, method = "canberra", diag = TRUE)
 # canbera
+
+# BUILD MATRIX
+citrus.matrix <- build_matrix(citrus, citrus.kmeans$cluster)
+original.matrix <- build_matrix(original, original.kmeans$cluster)
+
+# FINAL MATRIX
+dummy.matrix <- cbind(citrus.matrix, original.matrix)
 
 #########################################################################################
 # HELPER FUNCTIONS
@@ -112,4 +112,27 @@ plot_kmeans_analysis <- function(from, to, data) {
        ylab="Within groups sum of squares",
        main="Assessing the Optimal Number of Clusters with the Elbow Method",
        pch=20, cex=2, panel.first = grid())
+}
+
+build_matrix <- function (p_data, p_clusters) {
+  
+  matrixData <- NULL
+  matrixData <- cbind(p_data)
+  matrixData <- matrixData[,-c(5,6,7)]
+  matrixData <- cbind(matrixData, cluster=p_clusters)
+  matrixData <- as.data.frame(matrixData)
+  
+  headers <- strsplit(as.character(unique(matrixData$measurement_name)), " ")
+  matrix <- matrix(0, nrow = nclust, ncol = length(headers))
+  colnames(matrix) <- headers
+  
+  for(i in 1:nrow(matrixData)) {
+    row <- matrixData[i,]
+    index <- which(headers == row$measurement_name)
+    old_row <- matrix[row$cluster,]
+    old_row[index] = 1
+    matrix[row$cluster,] = old_row
+  }
+  
+  return(matrix)
 }
