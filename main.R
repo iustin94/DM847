@@ -110,55 +110,51 @@ dummy.matrix <- cbind(citrus.matrix, original.matrix)
 
 # LOAD THE REAL DATA INTO GLOBALENV
 setwd("real_data/")
-temp = list.files(pattern="*.csv")
+temp = list.files(pattern="BD18_*")
 list2env(
   lapply(setNames(temp, make.names(gsub("*.csv$", "", temp))), 
          read.table, header=TRUE), envir = .GlobalEnv
 )
 
-real_citrus <- NULL
-real_halls <- NULL
+real <- NULL
+for(name in gsub(".csv", "", temp)) {
+  real <- rbind(real, get(name))
+}
+real <- as.data.frame(real)
 
-real_citrus <- rbind(BD18_1711291646_out, BD18_1711291649_m2_out, BD18_1711291652_out, BD18_1711291652_out, 
-                     BD18_1711291705_out, BD18_1711291712_out, BD18_1711291719_out, BD18_1711291722_out,
-                     BD18_1711291729_out, BD18_1711291736_out, BD18_1711291739_out, BD18_1711291743_out)
-real_halls <- rbind(BD18_1711291656_out, BD18_1711291702_out, BD18_1711291709_out, BD18_1711291715_out,
-                    BD18_1711291725_out, BD18_1711291732_out, BD18_1711291746_out, BD18_1711291750_out,
-                    BD18_1711291753_out, BD18_1711291756_out, BD18_1711291800_out, BD18_1711291803_out)
-
-plot(x=real_citrus$t, y=real_citrus$r)
-plot(x=real_halls$t, y=real_halls$r)
+real.data <- cbind(real$peak_name, real$t, real$r)
+colnames(real.data) <- c("peak_name", "t", "r")
 
 # DATA STRUCTURE FOR K-MEANS
-real_citrus.data <- cbind(real_citrus$peak_name, real_citrus$t, real_citrus$r)
-real_halls.data <- cbind(real_halls$peak_name, real_halls$t, real_halls$r)
-colnames(real_citrus.data) <- c("peak_name", "t", "r")
-colnames(real_halls.data) <- c("peak_name", "t", "r")
+real.num_cluster <- (nrow(real.data))*sum(apply(real.data,2,var))
+for (i in 75:85) real.num_cluster[i - 74] <- sum(kmeans(real.data, centers=i)$withinss)
 
-real_citrus.num_cluster <- (nrow(real_citrus.data))*sum(apply(real_citrus.data,2,var))
-for (i in 75:85) real_citrus.num_cluster[i - 74] <- sum(kmeans(real_citrus.data, centers=i)$withinss)
-
-real_halls.num_cluster <- (nrow(real_halls.data))*sum(apply(real_halls.data,2,var))
-for (i in 75:85) real_halls.num_cluster[i - 74] <- sum(kmeans(real_halls.data, centers=i)$withinss)
-
-# BEST FIT 79 clusters
-plot_kmeans_analysis(75, 85, real_citrus.num_cluster)
-plot_kmeans_analysis(75, 85, real_halls.num_cluster)
+# BEST FIT X clusters
+plot_kmeans_analysis(75, 85, real.num_cluster)
 
 real_nclust <- 81
-real_citrus.kmeans <- kmeans(real_citrus.data, real_nclust)
-real_halls.kmeans <- kmeans(real_halls.data, real_nclust)
+real.kmeans <- kmeans(real.data, real_nclust)
 
-plot(x=real_citrus.data[,2], y=real_citrus.data[,3], col=real_citrus.kmeans$cluster, pch=20)
-plot(x=real_halls.data[,2], y=real_halls.data[,3], col=real_halls.kmeans$cluster, pch=20)
+plot(x=real.data[,2], y=real.data[,3], col=real.kmeans$cluster, pch=20)
 
 # BUILD MATRIX
-real_citrus.matrix <- build_matrix(real_citrus, real_citrus.kmeans$cluster)
-real_halls.matrix <- build_matrix(real_halls, real_halls.kmeans$cluster)
+real.matrix <- build_matrix(real, real.kmeans$cluster)
+real.labels <- read.csv("labels.csv", header = TRUE, sep = "\t")
 
-# FINAL MATRIX
-real.matrix <- cbind(real_citrus.matrix, real_halls.matrix)
+# RANDOM FOREST
+install.packages("randomForest")
+library(randomForest)
 
+for (i in 1:real_nclust) {
+  tmp_header[i] <- paste("V", i, sep = "")
+}
+
+training <- as.matrix(t(real.matrix))
+colnames(training) <- tmp_header
+labels <- as.factor(real.labels$candy)
+rf.model <- randomForest(labels~., data = training, importance = TRUE)
+rf.prediction <- predict(rf.model, training)
+table(rf.prediction, labels)
 
 #########################################################################################
 # HELPER FUNCTIONS
