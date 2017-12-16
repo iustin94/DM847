@@ -4,6 +4,13 @@ Quick link to [exam](http://www.imada.sdu.dk/~jbaumbac/download/teaching/ws17-18
 
 ### TO DO LIST
 
-- [ ] Peak alignment (clustering) @matq007
-- [ ] Peak alignment (CANBERA DISTANCE) @iustin94
-- [ ] Random forest alignment @maja
+- [x] Peak alignment (clustering) @matq007
+- [ ] ---Peak alignment (CANBERA DISTANCE) @iustin94---
+- [ ] ---Random forest alignment @maja---
+- [ ] Generate PEAX data @matthew
+- [ ] Run the classification and test them
+- [ ] Write report
+
+### Current decision tree
+
+![Decision tree](https://github.com/iustin94/DM847/tree/master/tree_img.png "Decision tree")
