@@ -156,6 +156,26 @@ rf.model <- randomForest(labels~., data = training, importance = TRUE)
 rf.prediction <- predict(rf.model, training)
 table(rf.prediction, labels)
 
+# 5-FOLD CROSS-VALIDATION
+install.packages("caret")
+library(caret)
+set.seed(42)
+
+folds.num <- 5
+folds <- cut(seq(1,nrow(training)),breaks=folds.num,labels=FALSE)
+
+for(i in 1:folds.num){
+  #Segement your data by fold using the which() function 
+  testIndexes <- which(folds==i,arr.ind=TRUE)
+  testData <- yourData[testIndexes, ]
+  trainData <- yourData[-testIndexes, ]
+  #Use the test and train data partitions however you desire...
+}
+
+# REPORT MEAN, ACCURACY, SENSITIVITY AND SPECIFICITY
+
+# 5 PEAKS USING Gini index
+
 #########################################################################################
 # HELPER FUNCTIONS
 #########################################################################################
