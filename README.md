@@ -13,4 +13,4 @@ Quick link to [exam](http://www.imada.sdu.dk/~jbaumbac/download/teaching/ws17-18
 
 ### Current decision tree
 
-![Decision tree](https://github.com/iustin94/DM847/tree/master/tree_img.png "Decision tree")
+![Decision tree](https://github.com/iustin94/DM847/blob/master/tree_img.png "Decision tree")
