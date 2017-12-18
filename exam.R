@@ -18,44 +18,34 @@ library(rfUtilities)
 library(rpart)
 library(tree)
 
-setwd("corrected_data/")
-temp = list.files(pattern="BD18_*")
-list2env(
-  lapply(setNames(temp, make.names(gsub("*.csv$", "", temp))), 
-         read.table, header=TRUE), envir = .GlobalEnv
-)
+set.seed(1)
+DEBUG = TRUE
+project_path <- getwd()
+load_raw_data("data")
+# generate_density_plot("density_plots", "data")
 
-real <- NULL
-for(name in gsub(".csv", "", temp)) {
-  real <- rbind(real, get(name))
+if (DEBUG == TRUE) {
+  setwd(paste(project_path, "corrected_data", sep = "/"))
+  temp = list.files(pattern="*_out.csv")
+  list2env(
+    lapply(setNames(temp, make.names(gsub("*.csv$", "", temp))), 
+           read.table, header=TRUE), envir = .GlobalEnv
+  )  
+} else {
+  build_peaks("data", "peax", "corrected_data")
 }
-real <- as.data.frame(real, stringsAsFactors = TRUE)
 
-real.data <- cbind(real$peak_name, real$t, real$r)
-colnames(real.data) <- c("peak_name", "t", "r")
+peaks <- get_peaks("*_out.csv")
+peaks.data <- get_peaks_data(peaks)
+peaks.n_clust <- get_nclust(peaks.data)
+peaks.kmeans <- kmeans(peaks.data, peaks.n_clust)
+plot(x = peaks.data[,2], y = peaks.data[,3], col=peaks.kmeans$cluster, pch=20, 
+     xlab = "t", ylab = "r", main = "K-means on peak data")
 
-# DATA STRUCTURE FOR K-MEANS
-real.num_cluster <- (nrow(real.data))*sum(apply(real.data,2,var))
-for (i in 75:85) real.num_cluster[i - 74] <- sum(kmeans(real.data, centers=i)$withinss)
-
-# BEST FIT X clusters
-plot_kmeans_analysis(75, 85, real.num_cluster)
-
-real_nclust <- 81
-real.kmeans <- kmeans(real.data, real_nclust)
-
-plot(x=real.data[,2], y=real.data[,3], col=real.kmeans$cluster, pch=20)
-
-# BUILD MATRIX
-real.labels <- NULL
-real.labels <- read.table("labels.txt", header = TRUE, sep = "\t")
-real.matrix <- build_matrix(real, real.kmeans$cluster, real_nclust)
-
-# BUILD TRAINING MATRIX
-set.seed(42)
-training <- as.data.frame(t(real.matrix))
-rf.candies <- as.factor(real.labels$candy)
-training <- cbind(training, candy=(as.factor(real.labels$candy)))
+# Build: matrix, training matrix
+peaks.labels <- peaks_labels
+peaks.matrix <- build_matrix(peaks, peaks.kmeans$cluster, peaks.n_clust)
+training <- build_training_matrix(peaks.matrix, peaks_labels)
 
 # SPLIT DATA INTO TRAINING AND TEST DATA (75%)
 train_split <- floor(0.75 * nrow(training))
@@ -80,37 +70,134 @@ specificity(rf.test$candy, predicted)
 accuracy(rf.test$candy, predicted)
 
 # 5 PEAKS USING Gini index
-gini.imporance <- as.data.frame(importance(rf.model))
-sort_indexes <- order(gini.imporance, decreasing = T)[1:5]
-gini.peaks <- NULL
-gini.peaks <- cbind(peaks = lapply(sort_indexes, function(i) paste("V", i, sep = "")))
-gini.peaks <- cbind(gini.peaks, values = gini.imporance$MeanDecreaseGini[sort_indexes])
-gini.peaks <- as.data.frame(gini.peaks)
+gini.peaks <- build_gini_index(rf.model)
 
 # PLOT THE DECISION TREE
+#########################################################################################
+# VERSION 1
+# tree.formula <- paste("candy ~ . +",
+#                      paste(gini.peaks$peaks, collapse = "+"),
+#                      sep = "")
+# tree.model <- tree(tree.formula, training)
+# summary(tree.model)
+# plot(tree.model)
+# text(tree.model, pretty = 0)
+#########################################################################################
+
+# PLOT VERSION II - BETTER
 tree.formula <- paste("candy ~ . +",
                       paste(gini.peaks$peaks, collapse = "+"),
                       sep = "")
-tree.model <- tree(tree.formula, training)
-summary(tree.model)
-plot(tree.model)
-text(tree.model, pretty = 0)
-
-# PLOT VERSION II
 tree.model2 <- rpart(tree.formula,
              data=training,
              method="class",
-             control=rpart.control(minsplit=2, cp=0)
+             control=rpart.control(minsplit = 2, cp = 0)
              )
 summary(tree.model2)
-plot(tree.model2)
-text(tree.model2)
+plot_dt()
+save_dt()
 
-tmp <- as.data.frame(predict(tree.model2, rf.test))
-tmp
 #########################################################################################
-# HELPER FUNCTIONS
+# UNLABELED DATA
+load_raw_data("unlabelled_candy_raw")
+if (DEBUG == TRUE) {
+  setwd(paste(project_path, "corrected_data", sep = "/"))
+  temp = list.files(pattern="*_out2.csv")
+  list2env(
+    lapply(setNames(temp, make.names(gsub("*.csv$", "", temp))), 
+           read.table, header=TRUE), envir = .GlobalEnv
+  )  
+} else {
+  build_peaks("data", "peax", "corrected_data", "_out2.csv")
+}
+
+unlabelled <- get_peaks("*_out2.csv")
+unlabelled.data <- get_peaks_data(unlabelled)
+unlabelled.n_clust <- peaks.n_clust
+unlabelled.kmeans <- kmeans(unlabelled.data, unlabelled.n_clust)
+unlabelled.matrix <- build_matrix(unlabelled, unlabelled.kmeans$cluster, unlabelled.n_clust)
+ulabelled.the_matrix <- build_training_matrix(unlabelled.matrix)
+
+the_result <- predict_result(tree.model2, ulabelled.the_matrix)
+
 #########################################################################################
+# HELPER FUNCTIONS LOAD FIRST
+#########################################################################################
+load_raw_data <- function(directory) {
+  print("LOADING DATA ...")
+  setwd(paste(project_path, "data", sep = "/"))
+  temp = list.files(pattern="*.csv")
+  list2env(
+    lapply(setNames(temp, make.names(gsub("*_ims.csv$", "", temp))), read.csv), 
+    envir = .GlobalEnv
+  )
+  assign("peaks_labels", read.table("labels.txt", header = TRUE, sep = "\t"), envir = .GlobalEnv)
+}
+
+generate_density_plot <- function(output_dir, data_dir) {
+  setwd(paste(project_path, output_dir, sep = "/"))
+  names <- peaks_labels$file
+  for (i in names){
+    input <- paste("../", data_dir, "/", i, sep = "")
+    print(paste("Generating density plot for", i, sep = " "))
+    input <- read.table(input,header=TRUE, sep=",")
+    input <- input[-(1:131),-(3)]
+    png(paste(i, ".png", sep=""), width = 1000, height=600)
+    cols = rev(colorRampPalette(c("red", "blue", "yellow"))(13))
+    filled.contour(as.matrix(input[,3:length(input[1,])]),
+                   col=cols,plot.title = title(xlab="tr", ylab="1/k0"))
+    dev.off()
+  }
+}
+
+# RUN TEST
+build_peaks <- function(data_dir, peax_dir, out_dir, p_pattern) {
+  setwd(paste(project_path, peax_dir, sep = "/"))
+  print("Running peax")
+  for (i in names){
+    input <- paste("../", data_dir, "/", i, "_ims.csv", sep="")
+    output <- paste("../", out_dir, "/", i, p_pattern, sep="")
+    print(output)
+    system(paste("peax.exe", input, output, sep=" "))
+  }
+  
+  # inputs the peak result files back into R
+  setwd(paste(project_path, out_dir, sep = "/"))
+  temp = list.files(pattern="*.csv")
+  list2env(
+    lapply(setNames(temp, make.names(gsub("*.csv$", "", temp))), 
+           read.table, header=TRUE), envir = .GlobalEnv
+  )
+}
+
+get_peaks <- function(p_pattern) {
+  tmp_peaks <- NULL
+  temp = list.files(pattern=p_pattern)
+  for(name in gsub(".csv", "", temp)) {
+    tmp_peaks <- rbind(tmp_peaks, get(name))
+  }
+  tmp_peaks <- as.data.frame(tmp_peaks, stringsAsFactors = TRUE)
+  
+  return(tmp_peaks)
+}
+
+get_peaks_data <- function(p_peaks) {
+  tmp <- cbind(p_peaks$peak_name, p_peaks$t, p_peaks$r)
+  colnames(tmp) <- c("peak_name", "t", "r")
+  
+  return(tmp)
+}
+
+get_nclust <- function(p_data) {
+  tmp_start <- 79
+  tmp_end <- 85
+  clusters <- (nrow(p_data))*sum(apply(p_data,2,var))
+  for (i in tmp_start:tmp_end) clusters[i - tmp_start] <- sum(kmeans(p_data, centers=i)$withinss)
+  
+  plot_kmeans_analysis(tmp_start + 1, tmp_end, clusters)
+  return(which.max(clusters) + tmp_start)
+}
+
 plot_kmeans_analysis <- function(from, to, data) {
   plot(from:to, data, type="b", xlab="Number of Clusters",
        ylab="Within groups sum of squares",
@@ -140,3 +227,62 @@ build_matrix <- function (p_data, p_clusters, p_num_clusters) {
   
   return(matrix)
 }
+
+build_training_matrix <- function(p_matrix, p_labels = NULL) {
+  tmp <- as.data.frame(t(p_matrix))
+  if (is.null(p_labels)) {
+    tmp <- cbind(tmp, candy=(c("")))
+  } else {
+    tmp <- cbind(tmp, candy=(as.factor(p_labels$candy)))  
+  }
+  return(tmp)
+}
+
+build_gini_index <- function(p_model) {
+  tmp_importance <- as.data.frame(importance(rf.model))
+  sort_indexes <- order(tmp_importance, decreasing = T)[1:5]
+  tmp <- NULL
+  tmp <- cbind(peaks = lapply(sort_indexes, function(i) paste("V", i, sep = "")))
+  tmp <- cbind(tmp, values = tmp_importance$MeanDecreaseGini[sort_indexes])
+  tmp <- as.data.frame(tmp)
+  
+  return(tmp)
+}
+
+plot_dt <- function() {
+  setwd(project_path)
+  plot(tree.model2, main = paste("Decision tree for", peaks.n_clust, "cluster", collapse = " "))
+  text(tree.model2)
+}
+
+save_dt <- function() {
+  setwd(project_path)
+  png(paste("tree_img.png", sep=""), width = 1000, height=600)
+  plot_dt()
+  dev.off()
+}
+
+predict_result <- function(p_tree, p_test) {
+  the_result <- as.data.frame(predict(p_tree, p_test))
+  tmp <- get_result(the_result)
+  View(tmp)
+  write.csv(tmp, "result.csv", row.names = FALSE)
+  return(tmp)
+}
+
+get_result <- function(p_data) {
+  setwd(paste(project_path))
+  headers <- colnames(p_data)
+  patients <- rownames(p_data)
+  tmp <- NULL
+  for (i in 1:nrow(p_data)) {
+    if (p_data[i,][1] > p_data[i,][2]) {
+      tmp <- rbind(tmp, c(patients[i], headers[1]))
+    } else {
+      tmp <- rbind(tmp, c(patients[i], headers[2]))
+    }
+  }
+  colnames(tmp) <- c("file", "candy")
+  return(as.data.frame(tmp))
+}
+

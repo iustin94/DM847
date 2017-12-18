@@ -1,7 +1,0 @@
-file, candy
-BD18_1408280826, halls
-BD18_1408280841, halls
-BD18_1408280844, halls
-BD18_1408280834, halls_citruzzz
-BD18_1408280838, halls_citruzzz
-BD18_1408280851, halls_citruzzz
