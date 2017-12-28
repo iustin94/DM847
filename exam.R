@@ -6,11 +6,14 @@
 # 2) load the data 
 # load("exam_workspace.R")
 #########################################################################################
-install.packages("randomForest")
-install.packages("rfUtilities")
-install.packages("caret")
-install.packages("tree")
-install.packages("rpart")
+list.of.packages <- c("randomForest", "rfUtilities", "caret", "tree", "rpart")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) {
+  install.packages(new.packages)
+} else {
+  print(paste("Packages already installed" ))
+}
+
 
 library(randomForest)
 library(caret)
