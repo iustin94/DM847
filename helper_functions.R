@@ -118,11 +118,11 @@ build_training_matrix <- function(p_matrix, p_labels = NULL) {
 }
 
 build_gini_index <- function(p_model) {
-  tmp_importance <- as.data.frame(importance(rf.model))
-  sort_indexes <- order(tmp_importance, decreasing = T)[1:5]
+  tmp_importance <- varImp(p_model)
+  sort_indexes <- order(tmp_importance$importance, decreasing = T)[1:5]
   tmp <- NULL
   tmp <- cbind(peaks = lapply(sort_indexes, function(i) paste("V", i, sep = "")))
-  tmp <- cbind(tmp, values = tmp_importance$MeanDecreaseGini[sort_indexes])
+  tmp <- cbind(tmp, values = tmp_importance$importance[sort_indexes,])
   tmp <- as.data.frame(tmp)
   
   return(tmp)

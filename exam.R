@@ -59,12 +59,13 @@ rf.train <- training[train_ind, ]
 rf.test <- training[-train_ind, ]
 rf.model <- randomForest(candy ~ ., data = rf.train, ntree = 500)
 rf.model
+getTree(rf.model, k = 81)
 plot(rf.model)
 
 # 5-FOLD CROSS-VALIDATION
 rf.num <- 5
-fold.trainControl <- trainControl(method = "cv", number = rf.num, classProbs = TRUE)
-fold.model <- train(candy ~ ., data = training, trControl = fold.trainControl, method = "rf")
+fold.trainControl <- trainControl(method = "cv", number = rf.num, classProbs = TRUE, savePredictions = TRUE, allowParallel = TRUE)
+fold.model <- train(candy ~ ., data = training, trControl = fold.trainControl, method = "rf", tuneLength = 10, metric = "Accuracy")
 fold.model
 plot(fold.model)
 
@@ -75,7 +76,7 @@ specificity(rf.test$candy, predicted)
 accuracy(rf.test$candy, predicted)
 
 # 5 PEAKS USING Gini index
-gini.peaks <- build_gini_index(rf.model)
+gini.peaks <- build_gini_index(fold.model)
 
 # PLOT THE DECISION TREE
 #########################################################################################
@@ -90,9 +91,10 @@ gini.peaks <- build_gini_index(rf.model)
 #########################################################################################
 
 # PLOT VERSION II - BETTER
-tree.formula <- paste("candy ~ . +",
+tree.formula <- paste("candy ~ ",
                       paste(gini.peaks$peaks, collapse = "+"),
                       sep = "")
+
 tree.model2 <- rpart(tree.formula,
              data=training,
              method="class",
