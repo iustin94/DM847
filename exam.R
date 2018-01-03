@@ -19,6 +19,7 @@ library(randomForest)
 library(caret)
 library(rfUtilities)
 library(rpart)
+library(rpart.plot)
 library(tree)
 
 source("helper_functions.R") # Import helper functions
@@ -59,6 +60,7 @@ rf.train <- training[train_ind, ]
 rf.test <- training[-train_ind, ]
 rf.model <- randomForest(candy ~ ., data = rf.train, ntree = 500)
 rf.model
+predict(rf.model, rf.train)
 getTree(rf.model, k = 81)
 plot(rf.model)
 
@@ -101,6 +103,7 @@ tree.model2 <- rpart(tree.formula,
              control=rpart.control(minsplit = 2, cp = 0)
              )
 summary(tree.model2)
+rpart.plot(tree.model2, type = 4)
 plot_dt()
 save_dt()
 
