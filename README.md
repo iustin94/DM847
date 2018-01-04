@@ -30,7 +30,7 @@ Our task was to implement a Random Forest algorithm on the samples measured at O
 
 ### Current status & decision tree
 
-With the current solution by average we 0 or 3 missmatches the most. 
+With the current solution by average we have 0 or 1 mismatches. 
 
 ![Decision tree](https://github.com/iustin94/DM847/blob/master/tree_img.png "Decision tree")
 
