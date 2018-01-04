@@ -4,13 +4,12 @@
 #########################################################################################
 load_raw_data <- function(directory) {
   print("LOADING DATA ...")
-  setwd(paste(project_path, "data", sep = "/"))
+  setwd(paste(project_path, directory, sep = "/"))
   temp = list.files(pattern="*.csv")
   list2env(
     lapply(setNames(temp, make.names(gsub("*_ims.csv$", "", temp))), read.csv), 
     envir = .GlobalEnv
   )
-  assign("peaks_labels", read.table("labels.txt", header = TRUE, sep = "\t"), envir = .GlobalEnv)
 }
 
 generate_density_plot <- function(output_dir, data_dir) {
@@ -61,7 +60,6 @@ get_peaks <- function(p_pattern) {
 }
 
 get_peaks_data <- function(p_peaks) {
-  # tmp <- cbind(p_peaks$peak_name, p_peaks$t, p_peaks$r)
   tmp <- cbind(p_peaks$t, p_peaks$r)
   colnames(tmp) <- c("t", "r")
   
@@ -89,7 +87,7 @@ build_matrix <- function (p_data, p_clusters, p_num_clusters) {
   
   matrixData <- NULL
   matrixData <- cbind(p_data)
-  matrixData <- matrixData[,-c(5,6,7)]
+  matrixData <- matrixData[,-c(5,6,7)] # remove unnecessary columns
   matrixData <- cbind(matrixData, cluster=p_clusters)
   matrixData <- as.data.frame(matrixData)
   
