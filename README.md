@@ -16,7 +16,7 @@ Our task was to implement a Random Forest algorithm on the samples measured at O
 8. Split data in ratio 75%-25% for train and test
 9. Apply randomForest
 10. Run 5-fold cross validation
-11. Report mean, accuracy, sensitiviry and specificity
+11. Report mean accuracy, sensitiviry and specificity
 12. Apply gini index and pick top 5 peaks
 13. Extract decision tree with the best peaks
 14. Load and build training matrix for unlabeled data
